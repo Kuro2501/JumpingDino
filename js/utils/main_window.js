@@ -7,10 +7,18 @@ let spikeSpeed = 3;
 let spikes = [];
 var timer = 100, range = 100;
 let home_background, game_background, over, poster;
+let textureButton, textureButton1, startButton, reTry;
 let gameOver = false;
 let playerSheet = {};
 let startTime;
 let text;
+let Score = 0;
+
+var scene1 = new PIXI.Container();   
+var scene2 = new PIXI.Container();
+var scene3 = new PIXI.Container();
+var enemy = new PIXI.Container();
+
 
 window.onload = function() {
     app = new PIXI.Application(
@@ -21,35 +29,43 @@ window.onload = function() {
         }
     );
     document.body.appendChild(app.view);
+    
+    initialize_Start_Screen(scene1);
+    initialize_Play_Screen(scene2);
+    initialize_Over_Screen(scene3);
 
-    // Declare score
-    text = new PIXI.Text('0',{fontFamily : 'Arial', fontSize: 32, fill : 0xffffff, align : 'center'});
-    text.x = 40;
-    text.y = 20;    
+    app.stage.addChild(scene1);
+    scene1.visible = true;
 
-    // Declare game over notification
-    over = new PIXI.Sprite.from("images/gameover.png");
-    over.anchor.set(0.5);
-    over.x = window.innerWidth / 2;
-    over.y = window.innerHeight / 4 + 20;
+    app.stage.addChild(scene2);
+    scene2.visible = false;
 
-    // Declare a start button
-    const textureButton = PIXI.Texture.from('./images/button.png');
-    const button = new PIXI.Sprite(textureButton);
-    button.anchor.set(0.5);
-    button.scale.set(0.75, 0.5);
-    button.x = window.innerWidth/2;
-    button.y = window.innerHeight/2 + 100;
+    app.stage.addChild(scene3);
+    scene3.visible = false;
+    app.stage.addChild(enemy);
 
-    button.interactive = true;
-    button.buttonMode = true;
-    button.on('pointerdown', onButtonDown); // click on button, the game will start
+}
 
+
+function initialize_Start_Screen (parents)
+{
     // Declare poster
     poster = new PIXI.Sprite.from("images/poster.png");
     poster.anchor.set(0.5);
     poster.x = window.innerWidth / 2;
     poster.y = window.innerHeight / 3;
+
+    // Declare a start button
+    textureButton = PIXI.Texture.from('./images/button.png');
+    startButton = new PIXI.Sprite(textureButton);
+    startButton.anchor.set(0.5);
+    startButton.scale.set(0.75, 0.5);
+    startButton.x = window.innerWidth/2;
+    startButton.y = window.innerHeight/2 + 100;
+
+    startButton.interactive = true;
+    startButton.buttonMode = true;
+    startButton.on('pointerdown', onButtonDown); // click on button, the game will start
 
     // Start screen background
     home_background = new PIXI.Graphics();
@@ -59,6 +75,18 @@ window.onload = function() {
                         window.innerHeight);
     home_background.endFill();
 
+    home_background.addChild(startButton);
+    home_background.addChild(poster);
+    parents.addChild(home_background);
+}
+
+function initialize_Play_Screen(parents)
+{
+    // Declare score
+    text = new PIXI.Text('0',{fill: "#fafafa", fontFamily: "Impact", align : 'center', fontSize: 32});
+    text.x = 40;
+    text.y = 20;  
+
     // Game background
     game_background = new PIXI.Graphics();
     game_background.beginFill(0x34e5eb);
@@ -67,34 +95,45 @@ window.onload = function() {
                         window.innerHeight);
     game_background.endFill();
 
-    home_background.addChild(button);
-    home_background.addChild(poster);
-    app.stage.addChild(home_background);
-
     //Platform
     background = new PIXI.Graphics();
-    background.beginFill(0xffdd99);
+    background.beginFill(0xffffff);
     background.lineStyle(3, 0xcccccc, 1);
     background.drawRect(0, window.innerHeight / 2,
                         window.innerWidth,
                         window.innerHeight);
     background.endFill();
     
-
-    jumpAt = app.view.height / 2;
-    //Mouse click interactions
-    app.view.addEventListener('click', playerJump);
-
-    window.addEventListener("keydown", function(e) {
-        keys[e.keyCode] = true;
-    });
-    window.addEventListener("keyup", function(e) {
-        keys[e.keyCode] = false;
-    });
-
-    //app.stage.addChild(player);
-    //app.ticker.add(gameLoop);
+    parents.addChild(game_background);
+    parents.addChild(background);
 }
+
+function initialize_Over_Screen(parents)
+{
+    // Declare game over notification
+    over = new PIXI.Sprite.from("images/gameover.png");
+    over.anchor.set(0.5);
+    over.x = window.innerWidth / 2;
+    over.y = window.innerHeight / 4 + 20;
+
+    
+    // Declare a retry button
+    textureButton1 = PIXI.Texture.from('./images/replay.png');
+    // reTry = new PIXI.Sprite.from("./images/name.png");
+    reTry = new PIXI.Sprite(textureButton1);
+    reTry.anchor.set(0.5);
+    reTry.scale.set(0.5, 0.5);
+    reTry.x = window.innerWidth/2 - 25;
+    reTry.y = window.innerHeight/4 + 90;
+    
+    reTry.interactive = true;
+    reTry.buttonMode = true;
+    reTry.on('pointerdown', reTryButtonDown); // click on button, the game will start
+
+    parents.addChild(over);
+    parents.addChild(reTry);
+}
+
 
 function doneLoading(e) {
     createPlayerSheet();
@@ -141,7 +180,7 @@ function createPlayer() {
     player.x = app.view.width / 2;
     player.y = app.view.height / 2;
     player.scale.set(2, 2);
-    app.stage.addChild(player);
+    scene2.addChild(player);
     player.play();
 }
 
@@ -164,7 +203,6 @@ function playerJump() {
         player.y = jumpAt;
         return;
       }
-      
       if (!player.playing) {
         player.textures = playerSheet.jumping;
         player.play();
@@ -201,10 +239,36 @@ function gameLoop() {
             range -= 1;
     }
     let milliSeconds = new Date() - startTime;
+
     //console.log(Math.round(milliSeconds/1000) + " seconds");
-    text.text = 'Score: ' + (Math.round(milliSeconds/1000 * spikeSpeed/4)).toString();
+    Score = Math.round(milliSeconds/1000 * spikeSpeed/4);
+    text.text = 'Score: ' + (Score).toString();
     moveSpike();
-    
+
+    if (gameOver) {
+        Score = 0;
+        gameOver = false;
+        app.ticker.stop();
+        scene3.visible = true;
+        console.log("in gameloop");
+        
+        gravity = 1, direction = -1;
+        power = 20;
+        spikeSpeed = 3;
+        spikes = [];
+        timer = 100, range = 100;
+
+        jumpAt = app.view.height / 2;
+        //Mouse click interactions
+        app.view.addEventListener('click', playerJump);
+        window.addEventListener("keydown", function(e) {
+            keys[e.keyCode] = true;
+        });
+        window.addEventListener("keyup", function(e) {
+            keys[e.keyCode] = false;
+        });
+
+    }
 }
 
 function createSpikes() {
@@ -227,7 +291,8 @@ function createSpikes() {
     spike.y = window.innerHeight / 2;
     spike.speed = spikeSpeed;
 
-    app.stage.addChild(spike);
+    // scene2.addChild(spike);
+    enemy.addChild(spike);
     
     return spike;
 }
@@ -238,20 +303,18 @@ function moveSpike() {
 
         if (rectIntersects(player, spikes[i])) {
             
-            app.stage.addChild(over);
-            
             player.textures = playerSheet.dead;
-
             player.play();
-            app.ticker.stop();
+            // app.ticker.stop();
+            // scene3.visible = true;
+            gameOver = true;
         }
 
         if (spikes[i].position.x < 0) {
             spikes[i].dead = true;
-            app.stage.removeChild(spikes[i]);
+            enemy.removeChildAt(i);
             spikes.splice(i, 1);
         }
-
     }
 }
 
@@ -270,6 +333,7 @@ function rectIntersects(a, b) {
             aBox.y + aBox.height > bBox.y &&
             aBox.y < bBox.y + bBox.height);
 }
+
 window.onresize = function(){
     app.renderer.resize(window.innerWidth, window.innerHeight);
     player.x = app.view.width / 2;
@@ -279,12 +343,30 @@ window.onresize = function(){
 
 // Calling needed functions
 function onButtonDown() {
+    this.interactive = false;
+
+    scene1.visible = false;
+    scene2.visible = true;
+
     startTime = new Date();
-    this.isdown = true;
-    app.stage.addChild(game_background);
-    app.stage.addChild(background);
     app.loader.add("DinoSpritesdoux", "images/sheets/DinoSprites - doux.png");
     app.loader.load(doneLoading);
-    app.stage.addChild(text);
-    this.interactive = false;
+    scene2.addChild(text);
+
+    jumpAt = app.view.height / 2;
+    //Mouse click interactions
+    app.view.addEventListener('click', playerJump);
+    window.addEventListener("keydown", function(e) {
+        keys[e.keyCode] = true;
+    });
+    window.addEventListener("keyup", function(e) {
+        keys[e.keyCode] = false;
+    });
+}
+
+function reTryButtonDown(){
+    startTime = new Date();
+    app.ticker.start();
+    scene3.visible = false;
+    enemy.removeChildren();
 }
